@@ -198,6 +198,17 @@ class FreeAgentServer {
               nested_invoice_items: { type: 'boolean', description: 'Include invoice items in response' }
             }
           }
+        },
+        {
+          name: 'get_single_invoice',
+          description: 'Get a single invoice by ID',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'Invoice ID' }
+            },
+            required: ['id']
+          }
         }
       ],
     }));
@@ -275,6 +286,14 @@ class FreeAgentServer {
             const invoices = await this.client.listInvoices(request.params.arguments);
             return {
               content: [{ type: 'text', text: JSON.stringify(invoices, null, 2) }]
+            };
+          }
+
+          case 'get_single_invoice': {
+            const { id } = request.params.arguments as { id: string };
+            const invoice = await this.client.getSingleInvoice(id);
+            return {
+              content: [{ type: 'text', text: JSON.stringify(invoice, null, 2) }]
             };
           }
 

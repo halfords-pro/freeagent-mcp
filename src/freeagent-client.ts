@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { FreeAgentConfig, Timeslip, TimeslipAttributes, TimeslipsResponse, TimeslipResponse, Invoice, InvoicesResponse } from './types.js';
+import { FreeAgentConfig, Timeslip, TimeslipAttributes, TimeslipsResponse, TimeslipResponse, Invoice, InvoicesResponse, InvoiceResponse } from './types.js';
 
 export class FreeAgentClient {
     private axiosInstance: AxiosInstance;
@@ -166,6 +166,17 @@ export class FreeAgentClient {
             return response.data.invoices;
         } catch (error) {
             console.error('[API] Failed to fetch invoices:', error);
+            throw error;
+        }
+    }
+
+    async getSingleInvoice(id: string): Promise<Invoice> {
+        try {
+            console.error('[API] Fetching invoice:', id);
+            const response = await this.axiosInstance.get<InvoiceResponse>(`/invoices/${id}`);
+            return response.data.invoice;
+        } catch (error) {
+            console.error('[API] Failed to fetch invoice:', error);
             throw error;
         }
     }

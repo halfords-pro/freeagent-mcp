@@ -61,6 +61,10 @@ export interface InvoicesResponse {
     invoices: Invoice[];
 }
 
+export interface InvoiceResponse {
+    invoice: Invoice;
+}
+
 export interface FreeAgentConfig {
     clientId: string;
     clientSecret: string;
