@@ -179,6 +179,25 @@ class FreeAgentServer {
             },
             required: ['id']
           }
+        },
+        {
+          name: 'list_all_invoices',
+          description: 'List invoices with optional filtering',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              view: {
+                type: 'string',
+                enum: ['all', 'recent_open_or_overdue', 'open', 'overdue', 'open_or_overdue', 'draft', 'paid', 'scheduled_to_email'],
+                description: 'Filter view type'
+              },
+              updated_since: { type: 'string', description: 'ISO datetime' },
+              contact: { type: 'string', description: 'Filter by contact URL' },
+              project: { type: 'string', description: 'Filter by project URL' },
+              sort: { type: 'string', description: 'Sort field (e.g., "-updated_at" for descending)' },
+              nested_invoice_items: { type: 'boolean', description: 'Include invoice items in response' }
+            }
+          }
         }
       ],
     }));
@@ -249,6 +268,13 @@ class FreeAgentServer {
             const timeslip = await this.client.stopTimer(id);
             return {
               content: [{ type: 'text', text: JSON.stringify(timeslip, null, 2) }]
+            };
+          }
+
+          case 'list_all_invoices': {
+            const invoices = await this.client.listInvoices(request.params.arguments);
+            return {
+              content: [{ type: 'text', text: JSON.stringify(invoices, null, 2) }]
             };
           }
 

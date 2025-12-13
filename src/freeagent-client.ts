@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { FreeAgentConfig, Timeslip, TimeslipAttributes, TimeslipsResponse, TimeslipResponse } from './types.js';
+import { FreeAgentConfig, Timeslip, TimeslipAttributes, TimeslipsResponse, TimeslipResponse, Invoice, InvoicesResponse } from './types.js';
 
 export class FreeAgentClient {
     private axiosInstance: AxiosInstance;
@@ -148,6 +148,24 @@ export class FreeAgentClient {
             return response.data.timeslip;
         } catch (error) {
             console.error('[API] Failed to stop timer:', error);
+            throw error;
+        }
+    }
+
+    async listInvoices(params?: {
+        view?: 'all' | 'recent_open_or_overdue' | 'open' | 'overdue' | 'open_or_overdue' | 'draft' | 'paid' | 'scheduled_to_email';
+        updated_since?: string;
+        contact?: string;
+        project?: string;
+        sort?: string;
+        nested_invoice_items?: boolean;
+    }): Promise<Invoice[]> {
+        try {
+            console.error('[API] Fetching invoices with params:', params);
+            const response = await this.axiosInstance.get<InvoicesResponse>('/invoices', { params });
+            return response.data.invoices;
+        } catch (error) {
+            console.error('[API] Failed to fetch invoices:', error);
             throw error;
         }
     }
