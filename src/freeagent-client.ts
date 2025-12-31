@@ -7,8 +7,9 @@ export class FreeAgentClient {
 
     constructor(config: FreeAgentConfig) {
         this.config = config;
+        const apiUrl = config.apiUrl || 'https://api.freeagent.com/v2';
         this.axiosInstance = axios.create({
-            baseURL: 'https://api.freeagent.com/v2',
+            baseURL: apiUrl,
             headers: {
                 'Authorization': `Bearer ${config.accessToken}`,
                 'Content-Type': 'application/json'
@@ -31,7 +32,8 @@ export class FreeAgentClient {
 
     private async refreshToken() {
         try {
-            const response = await axios.post('https://api.freeagent.com/v2/token_endpoint', {
+            const apiUrl = this.config.apiUrl || 'https://api.freeagent.com/v2';
+            const response = await axios.post(`${apiUrl}/token_endpoint`, {
                 grant_type: 'refresh_token',
                 refresh_token: this.config.refreshToken,
                 client_id: this.config.clientId,

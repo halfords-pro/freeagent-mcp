@@ -68,9 +68,28 @@ docker build -t freeagent-mcp .
 
 ## Configuration
 
+### Environment Variables
+
+The server requires the following environment variables:
+
+- `FREEAGENT_CLIENT_ID` - Your FreeAgent OAuth client ID (required)
+- `FREEAGENT_CLIENT_SECRET` - Your FreeAgent OAuth client secret (required)
+- `FREEAGENT_ACCESS_TOKEN` - Your OAuth access token (required)
+- `FREEAGENT_REFRESH_TOKEN` - Your OAuth refresh token (required)
+- `FREEAGENT_API_URL` - FreeAgent API endpoint URL (optional)
+  - Production (default): `https://api.freeagent.com/v2`
+  - Sandbox/Testing: `https://api.sandbox.freeagent.com/v2`
+  - If not set, defaults to production
+
+**Important:** Sandbox and production environments require separate OAuth credentials. Make sure you obtain the appropriate credentials from the [FreeAgent Developer Dashboard](https://dev.freeagent.com) for your target environment.
+
+### MCP Settings
+
 Add the server to your MCP settings (typically in `%APPDATA%/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`):
 
 ### For Node.js Installation:
+
+**Production Configuration:**
 ```json
 {
   "mcpServers": {
@@ -90,7 +109,30 @@ Add the server to your MCP settings (typically in `%APPDATA%/Code/User/globalSto
 }
 ```
 
+**Sandbox Configuration:**
+```json
+{
+  "mcpServers": {
+    "freeagent": {
+      "command": "node",
+      "args": ["path/to/freeagent-mcp/build/index.js"],
+      "env": {
+        "FREEAGENT_CLIENT_ID": "your_sandbox_client_id",
+        "FREEAGENT_CLIENT_SECRET": "your_sandbox_client_secret",
+        "FREEAGENT_ACCESS_TOKEN": "your_sandbox_access_token",
+        "FREEAGENT_REFRESH_TOKEN": "your_sandbox_refresh_token",
+        "FREEAGENT_API_URL": "https://api.sandbox.freeagent.com/v2"
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
 ### For Docker Installation:
+
+**Production Configuration:**
 ```json
 {
   "mcpServers": {
@@ -111,6 +153,37 @@ Add the server to your MCP settings (typically in `%APPDATA%/Code/User/globalSto
         "FREEAGENT_CLIENT_SECRET": "your_client_secret",
         "FREEAGENT_ACCESS_TOKEN": "your_access_token",
         "FREEAGENT_REFRESH_TOKEN": "your_refresh_token"
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+**Sandbox Configuration:**
+```json
+{
+  "mcpServers": {
+    "freeagent": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e", "FREEAGENT_CLIENT_ID",
+        "-e", "FREEAGENT_CLIENT_SECRET",
+        "-e", "FREEAGENT_ACCESS_TOKEN",
+        "-e", "FREEAGENT_REFRESH_TOKEN",
+        "-e", "FREEAGENT_API_URL",
+        "freeagent-mcp"
+      ],
+      "env": {
+        "FREEAGENT_CLIENT_ID": "your_sandbox_client_id",
+        "FREEAGENT_CLIENT_SECRET": "your_sandbox_client_secret",
+        "FREEAGENT_ACCESS_TOKEN": "your_sandbox_access_token",
+        "FREEAGENT_REFRESH_TOKEN": "your_sandbox_refresh_token",
+        "FREEAGENT_API_URL": "https://api.sandbox.freeagent.com/v2"
       },
       "disabled": false,
       "autoApprove": []

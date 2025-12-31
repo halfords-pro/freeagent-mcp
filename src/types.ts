@@ -44,4 +44,5 @@ export interface FreeAgentConfig {
     clientSecret: string;
     accessToken: string;
     refreshToken: string;
+    apiUrl?: string;
 }

@@ -14,6 +14,7 @@ const CLIENT_ID = process.env.FREEAGENT_CLIENT_ID as string;
 const CLIENT_SECRET = process.env.FREEAGENT_CLIENT_SECRET as string;
 const ACCESS_TOKEN = process.env.FREEAGENT_ACCESS_TOKEN as string;
 const REFRESH_TOKEN = process.env.FREEAGENT_REFRESH_TOKEN as string;
+const API_URL = process.env.FREEAGENT_API_URL;
 
 if (!CLIENT_ID || !CLIENT_SECRET || !ACCESS_TOKEN || !REFRESH_TOKEN) {
   throw new Error('Missing required environment variables for FreeAgent authentication');
@@ -55,7 +56,8 @@ class FreeAgentServer {
       clientId: CLIENT_ID,
       clientSecret: CLIENT_SECRET,
       accessToken: ACCESS_TOKEN,
-      refreshToken: REFRESH_TOKEN
+      refreshToken: REFRESH_TOKEN,
+      apiUrl: API_URL
     });
 
     this.server = new Server(
