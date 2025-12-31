@@ -181,6 +181,14 @@ class FreeAgentServer {
             },
             required: ['id']
           }
+        },
+        {
+          name: 'check_connection_status',
+          description: 'Check connection status to FreeAgent API and show configured endpoint',
+          inputSchema: {
+            type: 'object',
+            properties: {}
+          }
         }
       ],
     }));
@@ -251,6 +259,13 @@ class FreeAgentServer {
             const timeslip = await this.client.stopTimer(id);
             return {
               content: [{ type: 'text', text: JSON.stringify(timeslip, null, 2) }]
+            };
+          }
+
+          case 'check_connection_status': {
+            const status = await this.client.checkConnection();
+            return {
+              content: [{ type: 'text', text: JSON.stringify(status, null, 2) }]
             };
           }
 
