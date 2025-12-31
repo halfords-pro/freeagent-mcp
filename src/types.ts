@@ -44,6 +44,7 @@ export interface FreeAgentConfig {
     clientSecret: string;
     accessToken: string;
     refreshToken: string;
+    apiUrl?: string;
 }
 
 // Credit Note Types

@@ -5,11 +5,13 @@ import { FreeAgentConfig, Timeslip, TimeslipAttributes, TimeslipsResponse, Times
 export class FreeAgentClient {
     private axiosInstance: AxiosInstance;
     private config: FreeAgentConfig;
+    private apiUrl: string;
 
     constructor(config: FreeAgentConfig) {
         this.config = config;
+        this.apiUrl = config.apiUrl || 'https://api.freeagent.com/v2';
         this.axiosInstance = axios.create({
-            baseURL: 'https://api.sandbox.freeagent.com/v2',
+            baseURL: this.apiUrl,
             headers: {
                 'Authorization': `Bearer ${config.accessToken}`,
                 'Content-Type': 'application/json'
@@ -32,7 +34,7 @@ export class FreeAgentClient {
 
     private async refreshToken() {
         try {
-            const response = await axios.post('https://api.sandbox.freeagent.com/v2/token_endpoint', {
+            const response = await axios.post(`${this.apiUrl}/token_endpoint`, {
                 grant_type: 'refresh_token',
                 refresh_token: this.config.refreshToken,
                 client_id: this.config.clientId,
@@ -48,6 +50,26 @@ export class FreeAgentClient {
         } catch (error) {
             console.error('[Auth] Failed to refresh token:', error);
             throw error;
+        }
+    }
+
+    async checkConnection(): Promise<{ status: 'connected' | 'failed'; apiUrl: string }> {
+        try {
+            await this.axiosInstance.get('/contacts', {
+                params: {
+                    view: 'active',
+                    per_page: 1
+                }
+            });
+            return {
+                status: 'connected',
+                apiUrl: this.apiUrl
+            };
+        } catch (error) {
+            return {
+                status: 'failed',
+                apiUrl: this.apiUrl
+            };
         }
     }
 
