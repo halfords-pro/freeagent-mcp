@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
-import { FreeAgentConfig, Timeslip, TimeslipAttributes, TimeslipsResponse, TimeslipResponse } from './types.js';
+import { FreeAgentConfig, Timeslip, TimeslipAttributes, TimeslipsResponse, TimeslipResponse, CreditNote, CreditNoteAttributes, CreditNoteResponse } from './types.js';
 
+// TODO: BEFORE COMMITTING - Change api.sandbox.freeagent.com back to api.freeagent.com (production)
 export class FreeAgentClient {
     private axiosInstance: AxiosInstance;
     private config: FreeAgentConfig;
@@ -8,7 +9,7 @@ export class FreeAgentClient {
     constructor(config: FreeAgentConfig) {
         this.config = config;
         this.axiosInstance = axios.create({
-            baseURL: 'https://api.freeagent.com/v2',
+            baseURL: 'https://api.sandbox.freeagent.com/v2',
             headers: {
                 'Authorization': `Bearer ${config.accessToken}`,
                 'Content-Type': 'application/json'
@@ -31,7 +32,7 @@ export class FreeAgentClient {
 
     private async refreshToken() {
         try {
-            const response = await axios.post('https://api.freeagent.com/v2/token_endpoint', {
+            const response = await axios.post('https://api.sandbox.freeagent.com/v2/token_endpoint', {
                 grant_type: 'refresh_token',
                 refresh_token: this.config.refreshToken,
                 client_id: this.config.clientId,
@@ -148,6 +149,36 @@ export class FreeAgentClient {
             return response.data.timeslip;
         } catch (error) {
             console.error('[API] Failed to stop timer:', error);
+            throw error;
+        }
+    }
+
+    async createCreditNote(creditNoteAttributes: CreditNoteAttributes): Promise<CreditNote> {
+        try {
+            console.error('[API] Creating credit note:', creditNoteAttributes);
+            // TODO: Validate creditNoteAttributes before sending
+            // TODO: Ensure credit_note_items has at least one item
+            const response = await this.axiosInstance.post<CreditNoteResponse>('/credit_notes', {
+                credit_note: creditNoteAttributes
+            });
+            // TODO: Handle 201 Created status and Location header if needed
+            return response.data.credit_note;
+        } catch (error) {
+            console.error('[API] Failed to create credit note:', error);
+            // TODO: Add better error handling for validation failures
+            throw error;
+        }
+    }
+
+    async markCreditNoteAsSent(id: string): Promise<CreditNote> {
+        try {
+            console.error('[API] Marking credit note as sent:', id);
+            const response = await this.axiosInstance.put<CreditNoteResponse>(
+                `/credit_notes/${id}/transitions/mark_as_sent`
+            );
+            return response.data.credit_note;
+        } catch (error) {
+            console.error('[API] Failed to mark credit note as sent:', error);
             throw error;
         }
     }

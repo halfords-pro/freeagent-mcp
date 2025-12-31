@@ -3,13 +3,15 @@ import express from 'express';
 import axios from 'axios';
 import open from 'open';
 
+// TODO: BEFORE COMMITTING - Change api.sandbox.freeagent.com back to api.freeagent.com (production)
+
 // Command line arguments
 const clientId = process.argv[2];
 const clientSecret = process.argv[3];
 const port = 3456;
 const redirectUri = `http://localhost:${port}/oauth/callback`;
-const authUrl = 'https://api.freeagent.com/v2/approve_app';
-const tokenUrl = 'https://api.freeagent.com/v2/token_endpoint';
+const authUrl = 'https://api.sandbox.freeagent.com/v2/approve_app';
+const tokenUrl = 'https://api.sandbox.freeagent.com/v2/token_endpoint';
 
 if (!clientId || !clientSecret) {
     console.error('Usage: node get-oauth-tokens.js <client_id> <client_secret>');

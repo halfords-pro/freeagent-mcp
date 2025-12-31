@@ -8,7 +8,7 @@ import {
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
 import { FreeAgentClient } from './freeagent-client.js';
-import { TimeslipAttributes } from './types.js';
+import { TimeslipAttributes, CreditNoteAttributes } from './types.js';
 
 const CLIENT_ID = process.env.FREEAGENT_CLIENT_ID as string;
 const CLIENT_SECRET = process.env.FREEAGENT_CLIENT_SECRET as string;
@@ -17,6 +17,20 @@ const REFRESH_TOKEN = process.env.FREEAGENT_REFRESH_TOKEN as string;
 
 if (!CLIENT_ID || !CLIENT_SECRET || !ACCESS_TOKEN || !REFRESH_TOKEN) {
   throw new Error('Missing required environment variables for FreeAgent authentication');
+}
+
+function extractIdFromUrl(url: string | undefined, resourceType: string): string | undefined {
+  if (!url) return undefined;
+
+  // Extract ID from URL like "https://api.sandbox.freeagent.com/v2/credit_notes/123"
+  const match = url.match(/\/(\d+)$/);
+
+  if (!match) {
+    console.error(`[Warning] Failed to extract ${resourceType} ID from URL: ${url}`);
+    return undefined;
+  }
+
+  return match[1];
 }
 
 function validateTimeslipAttributes(data: unknown): TimeslipAttributes {
@@ -42,6 +56,136 @@ function validateTimeslipAttributes(data: unknown): TimeslipAttributes {
     hours: attrs.hours,
     comment: attrs.comment as string | undefined
   };
+}
+
+function validateCreditNoteItemAttributes(data: unknown): any {
+  if (typeof data !== 'object' || !data) {
+    throw new Error('Invalid credit note item: must be an object');
+  }
+
+  const item = data as Record<string, unknown>;
+
+  // TODO: Validate description is non-empty string
+  if (typeof item.description !== 'string') {
+    throw new Error('Invalid credit note item: description must be a string');
+  }
+
+  // Validate price is a valid number or numeric string
+  let priceValue: number;
+  if (typeof item.price === 'number') {
+    priceValue = item.price;
+  } else if (typeof item.price === 'string') {
+    priceValue = parseFloat(item.price);
+    if (isNaN(priceValue)) {
+      throw new Error('Invalid credit note item: price must be a valid number');
+    }
+  } else {
+    throw new Error('Invalid credit note item: price must be a string or number');
+  }
+
+  // Price MUST be negative for credit notes
+  if (priceValue >= 0) {
+    throw new Error('Invalid credit note item: price must be negative (credit notes reduce amounts owed)');
+  }
+
+  if (typeof item.quantity !== 'number') {
+    throw new Error('Invalid credit note item: quantity must be a number');
+  }
+
+  // Validate optional sales_tax_rate if provided
+  if (item.sales_tax_rate !== undefined) {
+    if (typeof item.sales_tax_rate !== 'string' && typeof item.sales_tax_rate !== 'number') {
+      throw new Error('Invalid credit note item: sales_tax_rate must be a string or number');
+    }
+  }
+
+  // Validate optional sales_tax_status if provided
+  if (item.sales_tax_status !== undefined) {
+    const validStatuses = ['TAXABLE', 'EXEMPT', 'OUT_OF_SCOPE'];
+    if (typeof item.sales_tax_status !== 'string' || !validStatuses.includes(item.sales_tax_status)) {
+      throw new Error('Invalid credit note item: sales_tax_status must be one of: TAXABLE, EXEMPT, OUT_OF_SCOPE');
+    }
+  }
+
+  // TODO: Add validation for other optional item fields (item_type)
+
+  const validatedItem: any = {
+    description: item.description,
+    price: item.price,
+    quantity: item.quantity
+  };
+
+  // Include optional fields if provided
+  if (item.sales_tax_rate !== undefined) {
+    validatedItem.sales_tax_rate = item.sales_tax_rate;
+  }
+  if (item.sales_tax_status !== undefined) {
+    validatedItem.sales_tax_status = item.sales_tax_status;
+  }
+
+  return validatedItem;
+}
+
+function validateCreditNoteAttributes(data: unknown): CreditNoteAttributes {
+  if (typeof data !== 'object' || !data) {
+    throw new Error('Invalid credit note data: must be an object');
+  }
+
+  const attrs = data as Record<string, unknown>;
+
+  // Validate required fields exist and are correct type
+  if (typeof attrs.contact !== 'string' ||
+    typeof attrs.dated_on !== 'string' ||
+    typeof attrs.payment_terms_in_days !== 'number') {
+    throw new Error('Invalid credit note data: missing or invalid required fields (contact, dated_on, payment_terms_in_days)');
+  }
+
+  // TODO: Validate dated_on format (YYYY-MM-DD regex)
+  // TODO: Validate contact is valid URI format
+  // TODO: Validate payment_terms_in_days is non-negative integer
+
+  // Validate credit_note_items array
+  if (!Array.isArray(attrs.credit_note_items) || attrs.credit_note_items.length === 0) {
+    throw new Error('Invalid credit note data: credit_note_items must be a non-empty array');
+  }
+
+  // Validate each item in the array
+  const validatedItems = attrs.credit_note_items.map((item, index) => {
+    try {
+      return validateCreditNoteItemAttributes(item);
+    } catch (error: any) {
+      throw new Error(`Invalid credit note item at index ${index}: ${error.message}`);
+    }
+  });
+
+  // Validate optional comments if provided
+  if (attrs.comments !== undefined && typeof attrs.comments !== 'string') {
+    throw new Error('Invalid credit note data: comments must be a string');
+  }
+
+  // Validate optional involves_sales_tax if provided
+  if (attrs.involves_sales_tax !== undefined && typeof attrs.involves_sales_tax !== 'boolean') {
+    throw new Error('Invalid credit note data: involves_sales_tax must be a boolean');
+  }
+
+  // TODO: Add validation for other optional fields (reference, currency, project)
+
+  const validatedCreditNote: any = {
+    contact: attrs.contact,
+    dated_on: attrs.dated_on,
+    payment_terms_in_days: attrs.payment_terms_in_days,
+    credit_note_items: validatedItems
+  };
+
+  // Include optional header fields if provided
+  if (attrs.comments !== undefined) {
+    validatedCreditNote.comments = attrs.comments;
+  }
+  if (attrs.involves_sales_tax !== undefined) {
+    validatedCreditNote.involves_sales_tax = attrs.involves_sales_tax;
+  }
+
+  return validatedCreditNote;
 }
 
 class FreeAgentServer {
@@ -179,6 +323,83 @@ class FreeAgentServer {
             },
             required: ['id']
           }
+        },
+        {
+          name: 'create_credit_note',
+          description: 'Create a new credit note for a contact',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              contact: {
+                type: 'string',
+                description: 'Contact URI (e.g., https://api.sandbox.freeagent.com/v2/contacts/123)'
+              },
+              dated_on: {
+                type: 'string',
+                description: 'Credit note date in YYYY-MM-DD format'
+              },
+              payment_terms_in_days: {
+                type: 'number',
+                description: 'Payment terms in days (use 0 for "Due on Receipt")'
+              },
+              credit_note_items: {
+                type: 'array',
+                description: 'Array of line items (at least one required)',
+                items: {
+                  type: 'object',
+                  properties: {
+                    description: {
+                      type: 'string',
+                      description: 'Item description'
+                    },
+                    price: {
+                      type: ['string', 'number'],
+                      description: 'Item price (MUST be negative - e.g., -10.50 to credit £10.50)'
+                    },
+                    quantity: {
+                      type: 'number',
+                      description: 'Item quantity'
+                    },
+                    sales_tax_rate: {
+                      type: ['string', 'number'],
+                      description: 'Optional sales tax rate (e.g., 20 for 20%)'
+                    },
+                    sales_tax_status: {
+                      type: 'string',
+                      enum: ['TAXABLE', 'EXEMPT', 'OUT_OF_SCOPE'],
+                      description: 'Optional sales tax status'
+                    }
+                    // TODO: Add other optional item fields schema (item_type, category)
+                  },
+                  required: ['description', 'price', 'quantity']
+                }
+              },
+              comments: {
+                type: 'string',
+                description: 'Optional comments for the credit note'
+              },
+              involves_sales_tax: {
+                type: 'boolean',
+                description: 'Optional flag indicating whether credit note involves sales tax'
+              }
+              // TODO: Add other optional credit note fields (reference, currency, project)
+            },
+            required: ['contact', 'dated_on', 'payment_terms_in_days', 'credit_note_items']
+          }
+        },
+        {
+          name: 'mark_credit_note_as_sent',
+          description: 'Mark a credit note as sent',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              id: {
+                type: 'string',
+                description: 'Credit note ID (e.g., "123" from the credit note URL)'
+              }
+            },
+            required: ['id']
+          }
         }
       ],
     }));
@@ -249,6 +470,34 @@ class FreeAgentServer {
             const timeslip = await this.client.stopTimer(id);
             return {
               content: [{ type: 'text', text: JSON.stringify(timeslip, null, 2) }]
+            };
+          }
+
+          case 'create_credit_note': {
+            const attributes = validateCreditNoteAttributes(request.params.arguments);
+            const creditNote = await this.client.createCreditNote(attributes);
+
+            // Extract IDs from URLs for easier reference
+            const credit_note_id = extractIdFromUrl(creditNote.url, 'credit_note');
+            const contact_id = extractIdFromUrl(creditNote.contact, 'contact');
+
+            // Return enhanced response with extracted IDs
+            const enhancedResponse = {
+              ...creditNote,
+              credit_note_id,
+              contact_id
+            };
+
+            return {
+              content: [{ type: 'text', text: JSON.stringify(enhancedResponse, null, 2) }]
+            };
+          }
+
+          case 'mark_credit_note_as_sent': {
+            const { id } = request.params.arguments as { id: string };
+            const creditNote = await this.client.markCreditNoteAsSent(id);
+            return {
+              content: [{ type: 'text', text: JSON.stringify(creditNote, null, 2) }]
             };
           }
 
