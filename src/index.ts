@@ -368,8 +368,20 @@ class FreeAgentServer {
                       type: 'string',
                       enum: ['TAXABLE', 'EXEMPT', 'OUT_OF_SCOPE'],
                       description: 'Optional sales tax status'
+                    },
+                    item_type: {
+                      type: 'string',
+                      enum: ['Hours', 'Days', 'Weeks', 'Months', 'Years', 'Products', 'Services', 'Training', 'Expenses', 'Comment', 'Bills', 'Discount', 'Credit', 'VAT', ''],
+                      description: 'Optional item type (blank string for no unit)'
+                    },
+                    category: {
+                      type: 'string',
+                      description: 'Optional category URI (e.g., https://api.freeagent.com/v2/categories/123)'
+                    },
+                    project: {
+                      type: 'string',
+                      description: 'Optional project URI for this specific item'
                     }
-                    // TODO: Add other optional item fields schema (item_type, category)
                   },
                   required: ['description', 'price', 'quantity']
                 }
@@ -381,8 +393,32 @@ class FreeAgentServer {
               involves_sales_tax: {
                 type: 'boolean',
                 description: 'Optional flag indicating whether credit note involves sales tax'
+              },
+              reference: {
+                type: 'string',
+                description: 'Optional credit note reference (auto-generated if omitted)'
+              },
+              currency: {
+                type: 'string',
+                description: 'Optional currency code (e.g., "GBP", "USD", "EUR" - defaults to company currency)'
+              },
+              project: {
+                type: 'string',
+                description: 'Optional project URI (e.g., https://api.freeagent.com/v2/projects/123)'
+              },
+              ec_status: {
+                type: 'string',
+                enum: ['UK/Non-EC', 'EC Goods', 'EC Services', 'Reverse Charge', 'EC VAT MOSS'],
+                description: 'Optional VAT status for EC transactions'
+              },
+              omit_header: {
+                type: 'boolean',
+                description: 'Optional flag to hide logo and company address'
+              },
+              bank_account: {
+                type: 'string',
+                description: 'Optional bank account URI for remittance advice display'
               }
-              // TODO: Add other optional credit note fields (reference, currency, project)
             },
             required: ['contact', 'dated_on', 'payment_terms_in_days', 'credit_note_items']
           }

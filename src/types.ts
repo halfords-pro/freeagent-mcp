@@ -53,7 +53,9 @@ export interface CreditNoteItemAttributes {
     quantity: number;
     sales_tax_rate?: string | number;  // Optional tax rate
     sales_tax_status?: 'TAXABLE' | 'EXEMPT' | 'OUT_OF_SCOPE';  // Optional tax status
-    // TODO: Add other optional fields (item_type, category)
+    item_type?: string;  // Optional item type (Hours, Days, Weeks, etc.)
+    category?: string;  // Optional category URI
+    project?: string;  // Optional project URI
 }
 
 export interface CreditNoteAttributes {
@@ -63,7 +65,12 @@ export interface CreditNoteAttributes {
     credit_note_items: CreditNoteItemAttributes[];
     comments?: string;  // Optional comments
     involves_sales_tax?: boolean;  // Optional sales tax indicator
-    // TODO: Add other optional fields (reference, currency, project, etc.)
+    reference?: string;  // Optional credit note reference
+    currency?: string;  // Optional currency code (e.g., GBP, USD, EUR)
+    project?: string;  // Optional project URI
+    ec_status?: string;  // Optional VAT status for EC transactions
+    omit_header?: boolean;  // Optional flag to hide logo and company address
+    bank_account?: string;  // Optional bank account URI for remittance advice
 }
 
 export interface CreditNote {
