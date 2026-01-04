@@ -156,8 +156,7 @@ export class FreeAgentClient {
     async createCreditNote(creditNoteAttributes: CreditNoteAttributes): Promise<CreditNote> {
         try {
             console.error('[API] Creating credit note:', creditNoteAttributes);
-            // TODO: Validate creditNoteAttributes before sending
-            // TODO: Ensure credit_note_items has at least one item
+            // Note: Validation happens at the MCP tool layer before reaching this method
             const response = await this.axiosInstance.post<CreditNoteResponse>('/credit_notes', {
                 credit_note: creditNoteAttributes
             });
@@ -165,7 +164,23 @@ export class FreeAgentClient {
             return response.data.credit_note;
         } catch (error) {
             console.error('[API] Failed to create credit note:', error);
-            // TODO: Add better error handling for validation failures
+
+            // Enhanced error handling for FreeAgent API responses
+            if (axios.isAxiosError(error)) {
+                const statusCode = error.response?.status;
+                const apiError = error.response?.data;
+
+                if (statusCode === 400) {
+                    throw new Error(`Invalid credit note data: ${JSON.stringify(apiError)}`);
+                } else if (statusCode === 401) {
+                    throw new Error('Authentication failed. Please check your API credentials.');
+                } else if (statusCode === 422) {
+                    throw new Error(`Validation failed: ${JSON.stringify(apiError)}`);
+                } else if (statusCode) {
+                    throw new Error(`FreeAgent API error (${statusCode}): ${JSON.stringify(apiError)}`);
+                }
+            }
+
             throw error;
         }
     }

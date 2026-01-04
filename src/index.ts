@@ -65,9 +65,8 @@ function validateCreditNoteItemAttributes(data: unknown): any {
 
   const item = data as Record<string, unknown>;
 
-  // TODO: Validate description is non-empty string
-  if (typeof item.description !== 'string') {
-    throw new Error('Invalid credit note item: description must be a string');
+  if (typeof item.description !== 'string' || item.description.trim() === '') {
+    throw new Error('Invalid credit note item: description must be a non-empty string');
   }
 
   // Validate price is a valid number or numeric string
@@ -107,7 +106,31 @@ function validateCreditNoteItemAttributes(data: unknown): any {
     }
   }
 
-  // TODO: Add validation for other optional item fields (item_type)
+  // Validate optional item_type if provided
+  if (item.item_type !== undefined) {
+    const validItemTypes = [
+      'Hours', 'Days', 'Weeks', 'Months', 'Years',
+      'Products', 'Services', 'Training', 'Expenses',
+      'Comment', 'Bills', 'Discount', 'Credit', 'VAT', ''
+    ];
+    if (typeof item.item_type !== 'string' || !validItemTypes.includes(item.item_type)) {
+      throw new Error('Invalid credit note item: item_type must be one of: Hours, Days, Weeks, Months, Years, Products, Services, Training, Expenses, Comment, Bills, Discount, Credit, VAT, or empty string');
+    }
+  }
+
+  // Validate optional category if provided
+  if (item.category !== undefined) {
+    if (typeof item.category !== 'string' || !item.category.match(/^https?:\/\/.+\/categories\/\d+$/)) {
+      throw new Error('Invalid credit note item: category must be a valid URI (e.g., https://api.freeagent.com/v2/categories/123)');
+    }
+  }
+
+  // Validate optional project if provided
+  if (item.project !== undefined) {
+    if (typeof item.project !== 'string' || !item.project.match(/^https?:\/\/.+\/projects\/\d+$/)) {
+      throw new Error('Invalid credit note item: project must be a valid URI (e.g., https://api.freeagent.com/v2/projects/123)');
+    }
+  }
 
   const validatedItem: any = {
     description: item.description,
@@ -121,6 +144,15 @@ function validateCreditNoteItemAttributes(data: unknown): any {
   }
   if (item.sales_tax_status !== undefined) {
     validatedItem.sales_tax_status = item.sales_tax_status;
+  }
+  if (item.item_type !== undefined) {
+    validatedItem.item_type = item.item_type;
+  }
+  if (item.category !== undefined) {
+    validatedItem.category = item.category;
+  }
+  if (item.project !== undefined) {
+    validatedItem.project = item.project;
   }
 
   return validatedItem;
@@ -140,9 +172,28 @@ function validateCreditNoteAttributes(data: unknown): CreditNoteAttributes {
     throw new Error('Invalid credit note data: missing or invalid required fields (contact, dated_on, payment_terms_in_days)');
   }
 
-  // TODO: Validate dated_on format (YYYY-MM-DD regex)
-  // TODO: Validate contact is valid URI format
-  // TODO: Validate payment_terms_in_days is non-negative integer
+  // Validate dated_on format (YYYY-MM-DD)
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(attrs.dated_on)) {
+    throw new Error('Invalid credit note data: dated_on must be in YYYY-MM-DD format');
+  }
+
+  // Additional validation: check if it's a valid date
+  const dateObj = new Date(attrs.dated_on);
+  if (isNaN(dateObj.getTime())) {
+    throw new Error('Invalid credit note data: dated_on must be a valid date');
+  }
+
+  // Validate contact is a valid URI format
+  const contactUriRegex = /^https?:\/\/.+\/contacts\/\d+$/;
+  if (!contactUriRegex.test(attrs.contact)) {
+    throw new Error('Invalid credit note data: contact must be a valid URI (e.g., https://api.freeagent.com/v2/contacts/123)');
+  }
+
+  // Validate payment_terms_in_days is a non-negative integer
+  if (!Number.isInteger(attrs.payment_terms_in_days) || attrs.payment_terms_in_days < 0) {
+    throw new Error('Invalid credit note data: payment_terms_in_days must be a non-negative integer');
+  }
 
   // Validate credit_note_items array
   if (!Array.isArray(attrs.credit_note_items) || attrs.credit_note_items.length === 0) {
@@ -168,7 +219,49 @@ function validateCreditNoteAttributes(data: unknown): CreditNoteAttributes {
     throw new Error('Invalid credit note data: involves_sales_tax must be a boolean');
   }
 
-  // TODO: Add validation for other optional fields (reference, currency, project)
+  // Validate optional reference
+  if (attrs.reference !== undefined) {
+    if (typeof attrs.reference !== 'string' || attrs.reference.trim() === '') {
+      throw new Error('Invalid credit note data: reference must be a non-empty string');
+    }
+  }
+
+  // Validate optional currency (ISO 4217 currency codes - 3 uppercase letters)
+  if (attrs.currency !== undefined) {
+    const currencyRegex = /^[A-Z]{3}$/;
+    if (typeof attrs.currency !== 'string' || !currencyRegex.test(attrs.currency)) {
+      throw new Error('Invalid credit note data: currency must be a 3-letter ISO currency code (e.g., GBP, USD, EUR)');
+    }
+  }
+
+  // Validate optional project
+  if (attrs.project !== undefined) {
+    const projectUriRegex = /^https?:\/\/.+\/projects\/\d+$/;
+    if (typeof attrs.project !== 'string' || !projectUriRegex.test(attrs.project)) {
+      throw new Error('Invalid credit note data: project must be a valid URI (e.g., https://api.freeagent.com/v2/projects/123)');
+    }
+  }
+
+  // Validate optional ec_status
+  if (attrs.ec_status !== undefined) {
+    const validEcStatuses = ['UK/Non-EC', 'EC Goods', 'EC Services', 'Reverse Charge', 'EC VAT MOSS'];
+    if (typeof attrs.ec_status !== 'string' || !validEcStatuses.includes(attrs.ec_status)) {
+      throw new Error('Invalid credit note data: ec_status must be one of: UK/Non-EC, EC Goods, EC Services, Reverse Charge, EC VAT MOSS');
+    }
+  }
+
+  // Validate optional omit_header
+  if (attrs.omit_header !== undefined && typeof attrs.omit_header !== 'boolean') {
+    throw new Error('Invalid credit note data: omit_header must be a boolean');
+  }
+
+  // Validate optional bank_account
+  if (attrs.bank_account !== undefined) {
+    const bankAccountUriRegex = /^https?:\/\/.+\/bank_accounts\/\d+$/;
+    if (typeof attrs.bank_account !== 'string' || !bankAccountUriRegex.test(attrs.bank_account)) {
+      throw new Error('Invalid credit note data: bank_account must be a valid URI (e.g., https://api.freeagent.com/v2/bank_accounts/123)');
+    }
+  }
 
   const validatedCreditNote: any = {
     contact: attrs.contact,
@@ -183,6 +276,24 @@ function validateCreditNoteAttributes(data: unknown): CreditNoteAttributes {
   }
   if (attrs.involves_sales_tax !== undefined) {
     validatedCreditNote.involves_sales_tax = attrs.involves_sales_tax;
+  }
+  if (attrs.reference !== undefined) {
+    validatedCreditNote.reference = attrs.reference;
+  }
+  if (attrs.currency !== undefined) {
+    validatedCreditNote.currency = attrs.currency;
+  }
+  if (attrs.project !== undefined) {
+    validatedCreditNote.project = attrs.project;
+  }
+  if (attrs.ec_status !== undefined) {
+    validatedCreditNote.ec_status = attrs.ec_status;
+  }
+  if (attrs.omit_header !== undefined) {
+    validatedCreditNote.omit_header = attrs.omit_header;
+  }
+  if (attrs.bank_account !== undefined) {
+    validatedCreditNote.bank_account = attrs.bank_account;
   }
 
   return validatedCreditNote;
