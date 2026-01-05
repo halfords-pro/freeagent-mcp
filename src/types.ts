@@ -88,3 +88,7 @@ export interface CreditNote {
 export interface CreditNoteResponse {
     credit_note: CreditNote;
 }
+
+export interface CreditNotesResponse {
+    credit_notes: CreditNote[];
+}

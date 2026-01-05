@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { FreeAgentConfig, Timeslip, TimeslipAttributes, TimeslipsResponse, TimeslipResponse, CreditNote, CreditNoteAttributes, CreditNoteResponse } from './types.js';
+import { FreeAgentConfig, Timeslip, TimeslipAttributes, TimeslipsResponse, TimeslipResponse, CreditNote, CreditNoteAttributes, CreditNoteResponse, CreditNotesResponse } from './types.js';
 
 // TODO: BEFORE COMMITTING - Change api.sandbox.freeagent.com back to api.freeagent.com (production)
 export class FreeAgentClient {
@@ -194,6 +194,34 @@ export class FreeAgentClient {
             return response.data.credit_note;
         } catch (error) {
             console.error('[API] Failed to mark credit note as sent:', error);
+            throw error;
+        }
+    }
+
+    async listCreditNotes(params?: {
+        view?: 'all' | 'recent_open_or_overdue' | 'open' | 'overdue' | 'open_or_overdue' | 'draft' | 'refunded' | string;
+        updated_since?: string;
+        contact?: string;
+        project?: string;
+        sort?: 'created_at' | 'updated_at' | '-created_at' | '-updated_at';
+        page?: number;
+        per_page?: number;
+    }): Promise<CreditNote[]> {
+        try {
+            console.error('[API] Fetching credit notes with params:', params);
+            const response = await this.axiosInstance.get<CreditNotesResponse>('/credit_notes', { params });
+
+            // Log pagination info for debugging
+            if (response.headers['x-total-count']) {
+                console.error('[API] Total credit notes:', response.headers['x-total-count']);
+            }
+            if (response.headers.link) {
+                console.error('[API] Pagination links available');
+            }
+
+            return response.data.credit_notes;
+        } catch (error) {
+            console.error('[API] Failed to fetch credit notes:', error);
             throw error;
         }
     }

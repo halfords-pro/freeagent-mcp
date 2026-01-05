@@ -547,6 +547,45 @@ class FreeAgentServer {
             },
             required: ['id']
           }
+        },
+        {
+          name: 'list_credit_notes',
+          description: 'List credit notes with optional filtering, sorting, and pagination. Returns up to 25 items by default (max 100 per page).',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              view: {
+                type: 'string',
+                enum: ['all', 'recent_open_or_overdue', 'open', 'overdue', 'open_or_overdue', 'draft', 'refunded'],
+                description: 'Filter by status view. Also supports "last_N_months" format (e.g., "last_6_months")'
+              },
+              updated_since: {
+                type: 'string',
+                description: 'ISO datetime to filter credit notes updated since (e.g., 2024-01-01T00:00:00.000Z)'
+              },
+              contact: {
+                type: 'string',
+                description: 'Filter by contact URI (e.g., https://api.freeagent.com/v2/contacts/123)'
+              },
+              project: {
+                type: 'string',
+                description: 'Filter by project URI (e.g., https://api.freeagent.com/v2/projects/456)'
+              },
+              sort: {
+                type: 'string',
+                enum: ['created_at', 'updated_at', '-created_at', '-updated_at'],
+                description: 'Sort order (prefix with - for descending)'
+              },
+              page: {
+                type: 'number',
+                description: 'Page number for pagination (default: 1)'
+              },
+              per_page: {
+                type: 'number',
+                description: 'Number of items per page (default: 25, max: 100)'
+              }
+            }
+          }
         }
       ],
     }));
@@ -645,6 +684,13 @@ class FreeAgentServer {
             const creditNote = await this.client.markCreditNoteAsSent(id);
             return {
               content: [{ type: 'text', text: JSON.stringify(creditNote, null, 2) }]
+            };
+          }
+
+          case 'list_credit_notes': {
+            const creditNotes = await this.client.listCreditNotes(request.params.arguments);
+            return {
+              content: [{ type: 'text', text: JSON.stringify(creditNotes, null, 2) }]
             };
           }
 
