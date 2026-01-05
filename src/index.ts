@@ -66,9 +66,8 @@ function validateCreditNoteItemAttributes(data: unknown): any {
 
   const item = data as Record<string, unknown>;
 
-  // TODO: Validate description is non-empty string
-  if (typeof item.description !== 'string') {
-    throw new Error('Invalid credit note item: description must be a string');
+  if (typeof item.description !== 'string' || item.description.trim() === '') {
+    throw new Error('Invalid credit note item: description must be a non-empty string');
   }
 
   // Validate price is a valid number or numeric string
@@ -108,7 +107,31 @@ function validateCreditNoteItemAttributes(data: unknown): any {
     }
   }
 
-  // TODO: Add validation for other optional item fields (item_type)
+  // Validate optional item_type if provided
+  if (item.item_type !== undefined) {
+    const validItemTypes = [
+      'Hours', 'Days', 'Weeks', 'Months', 'Years',
+      'Products', 'Services', 'Training', 'Expenses',
+      'Comment', 'Bills', 'Discount', 'Credit', 'VAT', ''
+    ];
+    if (typeof item.item_type !== 'string' || !validItemTypes.includes(item.item_type)) {
+      throw new Error('Invalid credit note item: item_type must be one of: Hours, Days, Weeks, Months, Years, Products, Services, Training, Expenses, Comment, Bills, Discount, Credit, VAT, or empty string');
+    }
+  }
+
+  // Validate optional category if provided
+  if (item.category !== undefined) {
+    if (typeof item.category !== 'string' || !item.category.match(/^https?:\/\/.+\/categories\/\d+$/)) {
+      throw new Error('Invalid credit note item: category must be a valid URI (e.g., https://api.freeagent.com/v2/categories/123)');
+    }
+  }
+
+  // Validate optional project if provided
+  if (item.project !== undefined) {
+    if (typeof item.project !== 'string' || !item.project.match(/^https?:\/\/.+\/projects\/\d+$/)) {
+      throw new Error('Invalid credit note item: project must be a valid URI (e.g., https://api.freeagent.com/v2/projects/123)');
+    }
+  }
 
   const validatedItem: any = {
     description: item.description,
@@ -122,6 +145,15 @@ function validateCreditNoteItemAttributes(data: unknown): any {
   }
   if (item.sales_tax_status !== undefined) {
     validatedItem.sales_tax_status = item.sales_tax_status;
+  }
+  if (item.item_type !== undefined) {
+    validatedItem.item_type = item.item_type;
+  }
+  if (item.category !== undefined) {
+    validatedItem.category = item.category;
+  }
+  if (item.project !== undefined) {
+    validatedItem.project = item.project;
   }
 
   return validatedItem;
@@ -141,9 +173,28 @@ function validateCreditNoteAttributes(data: unknown): CreditNoteAttributes {
     throw new Error('Invalid credit note data: missing or invalid required fields (contact, dated_on, payment_terms_in_days)');
   }
 
-  // TODO: Validate dated_on format (YYYY-MM-DD regex)
-  // TODO: Validate contact is valid URI format
-  // TODO: Validate payment_terms_in_days is non-negative integer
+  // Validate dated_on format (YYYY-MM-DD)
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(attrs.dated_on)) {
+    throw new Error('Invalid credit note data: dated_on must be in YYYY-MM-DD format');
+  }
+
+  // Additional validation: check if it's a valid date
+  const dateObj = new Date(attrs.dated_on);
+  if (isNaN(dateObj.getTime())) {
+    throw new Error('Invalid credit note data: dated_on must be a valid date');
+  }
+
+  // Validate contact is a valid URI format
+  const contactUriRegex = /^https?:\/\/.+\/contacts\/\d+$/;
+  if (!contactUriRegex.test(attrs.contact)) {
+    throw new Error('Invalid credit note data: contact must be a valid URI (e.g., https://api.freeagent.com/v2/contacts/123)');
+  }
+
+  // Validate payment_terms_in_days is a non-negative integer
+  if (!Number.isInteger(attrs.payment_terms_in_days) || attrs.payment_terms_in_days < 0) {
+    throw new Error('Invalid credit note data: payment_terms_in_days must be a non-negative integer');
+  }
 
   // Validate credit_note_items array
   if (!Array.isArray(attrs.credit_note_items) || attrs.credit_note_items.length === 0) {
@@ -169,7 +220,49 @@ function validateCreditNoteAttributes(data: unknown): CreditNoteAttributes {
     throw new Error('Invalid credit note data: involves_sales_tax must be a boolean');
   }
 
-  // TODO: Add validation for other optional fields (reference, currency, project)
+  // Validate optional reference
+  if (attrs.reference !== undefined) {
+    if (typeof attrs.reference !== 'string' || attrs.reference.trim() === '') {
+      throw new Error('Invalid credit note data: reference must be a non-empty string');
+    }
+  }
+
+  // Validate optional currency (ISO 4217 currency codes - 3 uppercase letters)
+  if (attrs.currency !== undefined) {
+    const currencyRegex = /^[A-Z]{3}$/;
+    if (typeof attrs.currency !== 'string' || !currencyRegex.test(attrs.currency)) {
+      throw new Error('Invalid credit note data: currency must be a 3-letter ISO currency code (e.g., GBP, USD, EUR)');
+    }
+  }
+
+  // Validate optional project
+  if (attrs.project !== undefined) {
+    const projectUriRegex = /^https?:\/\/.+\/projects\/\d+$/;
+    if (typeof attrs.project !== 'string' || !projectUriRegex.test(attrs.project)) {
+      throw new Error('Invalid credit note data: project must be a valid URI (e.g., https://api.freeagent.com/v2/projects/123)');
+    }
+  }
+
+  // Validate optional ec_status
+  if (attrs.ec_status !== undefined) {
+    const validEcStatuses = ['UK/Non-EC', 'EC Goods', 'EC Services', 'Reverse Charge', 'EC VAT MOSS'];
+    if (typeof attrs.ec_status !== 'string' || !validEcStatuses.includes(attrs.ec_status)) {
+      throw new Error('Invalid credit note data: ec_status must be one of: UK/Non-EC, EC Goods, EC Services, Reverse Charge, EC VAT MOSS');
+    }
+  }
+
+  // Validate optional omit_header
+  if (attrs.omit_header !== undefined && typeof attrs.omit_header !== 'boolean') {
+    throw new Error('Invalid credit note data: omit_header must be a boolean');
+  }
+
+  // Validate optional bank_account
+  if (attrs.bank_account !== undefined) {
+    const bankAccountUriRegex = /^https?:\/\/.+\/bank_accounts\/\d+$/;
+    if (typeof attrs.bank_account !== 'string' || !bankAccountUriRegex.test(attrs.bank_account)) {
+      throw new Error('Invalid credit note data: bank_account must be a valid URI (e.g., https://api.freeagent.com/v2/bank_accounts/123)');
+    }
+  }
 
   const validatedCreditNote: any = {
     contact: attrs.contact,
@@ -184,6 +277,24 @@ function validateCreditNoteAttributes(data: unknown): CreditNoteAttributes {
   }
   if (attrs.involves_sales_tax !== undefined) {
     validatedCreditNote.involves_sales_tax = attrs.involves_sales_tax;
+  }
+  if (attrs.reference !== undefined) {
+    validatedCreditNote.reference = attrs.reference;
+  }
+  if (attrs.currency !== undefined) {
+    validatedCreditNote.currency = attrs.currency;
+  }
+  if (attrs.project !== undefined) {
+    validatedCreditNote.project = attrs.project;
+  }
+  if (attrs.ec_status !== undefined) {
+    validatedCreditNote.ec_status = attrs.ec_status;
+  }
+  if (attrs.omit_header !== undefined) {
+    validatedCreditNote.omit_header = attrs.omit_header;
+  }
+  if (attrs.bank_account !== undefined) {
+    validatedCreditNote.bank_account = attrs.bank_account;
   }
 
   return validatedCreditNote;
@@ -370,8 +481,20 @@ class FreeAgentServer {
                       type: 'string',
                       enum: ['TAXABLE', 'EXEMPT', 'OUT_OF_SCOPE'],
                       description: 'Optional sales tax status'
+                    },
+                    item_type: {
+                      type: 'string',
+                      enum: ['Hours', 'Days', 'Weeks', 'Months', 'Years', 'Products', 'Services', 'Training', 'Expenses', 'Comment', 'Bills', 'Discount', 'Credit', 'VAT', ''],
+                      description: 'Optional item type (blank string for no unit)'
+                    },
+                    category: {
+                      type: 'string',
+                      description: 'Optional category URI (e.g., https://api.freeagent.com/v2/categories/123)'
+                    },
+                    project: {
+                      type: 'string',
+                      description: 'Optional project URI for this specific item'
                     }
-                    // TODO: Add other optional item fields schema (item_type, category)
                   },
                   required: ['description', 'price', 'quantity']
                 }
@@ -383,8 +506,32 @@ class FreeAgentServer {
               involves_sales_tax: {
                 type: 'boolean',
                 description: 'Optional flag indicating whether credit note involves sales tax'
+              },
+              reference: {
+                type: 'string',
+                description: 'Optional credit note reference (auto-generated if omitted)'
+              },
+              currency: {
+                type: 'string',
+                description: 'Optional currency code (e.g., "GBP", "USD", "EUR" - defaults to company currency)'
+              },
+              project: {
+                type: 'string',
+                description: 'Optional project URI (e.g., https://api.freeagent.com/v2/projects/123)'
+              },
+              ec_status: {
+                type: 'string',
+                enum: ['UK/Non-EC', 'EC Goods', 'EC Services', 'Reverse Charge', 'EC VAT MOSS'],
+                description: 'Optional VAT status for EC transactions'
+              },
+              omit_header: {
+                type: 'boolean',
+                description: 'Optional flag to hide logo and company address'
+              },
+              bank_account: {
+                type: 'string',
+                description: 'Optional bank account URI for remittance advice display'
               }
-              // TODO: Add other optional credit note fields (reference, currency, project)
             },
             required: ['contact', 'dated_on', 'payment_terms_in_days', 'credit_note_items']
           }
@@ -409,6 +556,45 @@ class FreeAgentServer {
           inputSchema: {
             type: 'object',
             properties: {}
+          }
+        },
+        {
+          name: 'list_credit_notes',
+          description: 'List credit notes with optional filtering, sorting, and pagination. Returns up to 25 items by default (max 100 per page).',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              view: {
+                type: 'string',
+                enum: ['all', 'recent_open_or_overdue', 'open', 'overdue', 'open_or_overdue', 'draft', 'refunded'],
+                description: 'Filter by status view. Also supports "last_N_months" format (e.g., "last_6_months")'
+              },
+              updated_since: {
+                type: 'string',
+                description: 'Date or datetime to filter credit notes updated since. Accepts YYYY-MM-DD (e.g., 2024-01-01) or full ISO datetime (e.g., 2024-01-01T00:00:00.000Z)'
+              },
+              contact: {
+                type: 'string',
+                description: 'Filter by contact URI (e.g., https://api.freeagent.com/v2/contacts/123)'
+              },
+              project: {
+                type: 'string',
+                description: 'Filter by project URI (e.g., https://api.freeagent.com/v2/projects/456)'
+              },
+              sort: {
+                type: 'string',
+                enum: ['created_at', 'updated_at', '-created_at', '-updated_at'],
+                description: 'Sort order (prefix with - for descending)'
+              },
+              page: {
+                type: 'number',
+                description: 'Page number for pagination (default: 1)'
+              },
+              per_page: {
+                type: 'number',
+                description: 'Number of items per page (default: 25, max: 100)'
+              }
+            }
           }
         }
       ],
@@ -515,6 +701,23 @@ class FreeAgentServer {
             const status = await this.client.checkConnection();
             return {
               content: [{ type: 'text', text: JSON.stringify(status, null, 2) }]
+            };
+          }
+
+          case 'list_credit_notes': {
+            // Transform updated_since from YYYY-MM-DD to ISO 8601 if needed
+            const params = { ...request.params.arguments };
+
+            if (params.updated_since && typeof params.updated_since === 'string') {
+              // Check if format is YYYY-MM-DD (10 characters, no 'T')
+              if (params.updated_since.length === 10 && !params.updated_since.includes('T')) {
+                params.updated_since = `${params.updated_since}T00:00:00.000Z`;
+              }
+            }
+
+            const creditNotes = await this.client.listCreditNotes(params);
+            return {
+              content: [{ type: 'text', text: JSON.stringify(creditNotes, null, 2) }]
             };
           }
 
