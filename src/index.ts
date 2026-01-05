@@ -561,7 +561,7 @@ class FreeAgentServer {
               },
               updated_since: {
                 type: 'string',
-                description: 'ISO datetime to filter credit notes updated since (e.g., 2024-01-01T00:00:00.000Z)'
+                description: 'Date or datetime to filter credit notes updated since. Accepts YYYY-MM-DD (e.g., 2024-01-01) or full ISO datetime (e.g., 2024-01-01T00:00:00.000Z)'
               },
               contact: {
                 type: 'string',
@@ -688,7 +688,17 @@ class FreeAgentServer {
           }
 
           case 'list_credit_notes': {
-            const creditNotes = await this.client.listCreditNotes(request.params.arguments);
+            // Transform updated_since from YYYY-MM-DD to ISO 8601 if needed
+            const params = { ...request.params.arguments };
+
+            if (params.updated_since && typeof params.updated_since === 'string') {
+              // Check if format is YYYY-MM-DD (10 characters, no 'T')
+              if (params.updated_since.length === 10 && !params.updated_since.includes('T')) {
+                params.updated_since = `${params.updated_since}T00:00:00.000Z`;
+              }
+            }
+
+            const creditNotes = await this.client.listCreditNotes(params);
             return {
               content: [{ type: 'text', text: JSON.stringify(creditNotes, null, 2) }]
             };
