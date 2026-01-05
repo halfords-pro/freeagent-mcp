@@ -206,6 +206,7 @@ export class FreeAgentClient {
         sort?: 'created_at' | 'updated_at' | '-created_at' | '-updated_at';
         page?: number;
         per_page?: number;
+        nested?: boolean;
     }): Promise<CreditNote[]> {
         try {
             console.error('[API] Fetching credit notes with params:', params);

@@ -583,6 +583,10 @@ class FreeAgentServer {
               per_page: {
                 type: 'number',
                 description: 'Number of items per page (default: 25, max: 100)'
+              },
+              include_credit_note_items: {
+                type: 'boolean',
+                description: 'Include credit note line items in the response (default: false). Set to true to get detailed item breakdown for each credit note.'
               }
             }
           }
@@ -696,6 +700,14 @@ class FreeAgentServer {
               if (params.updated_since.length === 10 && !params.updated_since.includes('T')) {
                 params.updated_since = `${params.updated_since}T00:00:00.000Z`;
               }
+            }
+
+            // Transform include_credit_note_items to API's nested parameter
+            if (params.include_credit_note_items === true) {
+              params.nested = true;
+              delete params.include_credit_note_items;  // Remove the abstraction parameter
+            } else {
+              delete params.include_credit_note_items;  // Remove if false or undefined
             }
 
             const creditNotes = await this.client.listCreditNotes(params);
