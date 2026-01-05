@@ -584,9 +584,9 @@ class FreeAgentServer {
                 type: 'number',
                 description: 'Number of items per page (default: 25, max: 100)'
               },
-              include_credit_note_items: {
+              nested: {
                 type: 'boolean',
-                description: 'Include credit note line items in the response (default: false). Set to true to get detailed item breakdown for each credit note.'
+                description: 'Include nested credit note items (default: false)'
               }
             }
           }
@@ -702,12 +702,12 @@ class FreeAgentServer {
               }
             }
 
-            // Transform include_credit_note_items to API's nested parameter
-            if (params.include_credit_note_items === true) {
-              params.nested = true;
-              delete params.include_credit_note_items;  // Remove the abstraction parameter
+            // Transform nested to API's nested_credit_note_items parameter
+            if (params.nested === true) {
+              params.nested_credit_note_items = true;
+              delete params.nested;  // Remove the MCP parameter
             } else {
-              delete params.include_credit_note_items;  // Remove if false or undefined
+              delete params.nested;  // Remove if false or undefined
             }
 
             const creditNotes = await this.client.listCreditNotes(params);
