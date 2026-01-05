@@ -593,6 +593,10 @@ class FreeAgentServer {
               per_page: {
                 type: 'number',
                 description: 'Number of items per page (default: 25, max: 100)'
+              },
+              nested: {
+                type: 'boolean',
+                description: 'Include nested credit note items (default: false)'
               }
             }
           }
@@ -713,6 +717,14 @@ class FreeAgentServer {
               if (params.updated_since.length === 10 && !params.updated_since.includes('T')) {
                 params.updated_since = `${params.updated_since}T00:00:00.000Z`;
               }
+            }
+
+            // Transform nested to API's nested_credit_note_items parameter
+            if (params.nested === true) {
+              params.nested_credit_note_items = true;
+              delete params.nested;  // Remove the MCP parameter
+            } else {
+              delete params.nested;  // Remove if false or undefined
             }
 
             const creditNotes = await this.client.listCreditNotes(params);
