@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { FreeAgentConfig, Timeslip, TimeslipAttributes, TimeslipsResponse, TimeslipResponse, CreditNote, CreditNoteAttributes, CreditNoteResponse, CreditNotesResponse } from './types.js';
+import { FreeAgentConfig, Timeslip, TimeslipAttributes, TimeslipsResponse, TimeslipResponse, CreditNote, CreditNoteAttributes, CreditNoteResponse, CreditNotesResponse, Invoice, InvoicesResponse } from './types.js';
 
 // TODO: BEFORE COMMITTING - Change api.sandbox.freeagent.com back to api.freeagent.com (production)
 export class FreeAgentClient {
@@ -245,6 +245,35 @@ export class FreeAgentClient {
             return response.data.credit_notes;
         } catch (error) {
             console.error('[API] Failed to fetch credit notes:', error);
+            throw error;
+        }
+    }
+
+    async listInvoices(params?: {
+        view?: 'all' | 'recent_open_or_overdue' | 'open' | 'overdue' | 'open_or_overdue' |
+               'draft' | 'paid' | 'scheduled_to_email' | 'thank_you_emails' | 'reminder_emails' | string;
+        updated_since?: string;
+        contact?: string;
+        project?: string;
+        sort?: 'created_at' | 'updated_at' | '-created_at' | '-updated_at';
+        page?: number;
+        per_page?: number;
+        nested_invoice_items?: boolean;
+    }): Promise<Invoice[]> {
+        try {
+            console.error('[API] Fetching invoices with params:', params);
+            const response = await this.axiosInstance.get<InvoicesResponse>('/invoices', { params });
+
+            if (response.headers['x-total-count']) {
+                console.error('[API] Total invoices:', response.headers['x-total-count']);
+            }
+            if (response.headers.link) {
+                console.error('[API] Pagination links available');
+            }
+
+            return response.data.invoices;
+        } catch (error) {
+            console.error('[API] Failed to fetch invoices:', error);
             throw error;
         }
     }
