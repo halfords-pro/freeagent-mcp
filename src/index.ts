@@ -179,6 +179,60 @@ class FreeAgentServer {
             },
             required: ['id']
           }
+        },
+        {
+          name: 'list_invoices',
+          description: 'List invoices with optional filtering, sorting, and pagination. Returns up to 25 items by default (max 100 per page).',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              view: {
+                type: 'string',
+                enum: [
+                  'all',
+                  'recent_open_or_overdue',
+                  'open',
+                  'overdue',
+                  'open_or_overdue',
+                  'draft',
+                  'paid',
+                  'scheduled_to_email',
+                  'thank_you_emails',
+                  'reminder_emails'
+                ],
+                description: 'Filter by invoice status view. Also supports "last_N_months" format (e.g., "last_6_months")'
+              },
+              updated_since: {
+                type: 'string',
+                description: 'Date or datetime to filter invoices updated since. Accepts YYYY-MM-DD or ISO datetime'
+              },
+              contact: {
+                type: 'string',
+                description: 'Filter by contact URI (e.g., https://api.freeagent.com/v2/contacts/123)'
+              },
+              project: {
+                type: 'string',
+                description: 'Filter by project URI (e.g., https://api.freeagent.com/v2/projects/456)'
+              },
+              sort: {
+                type: 'string',
+                enum: ['created_at', 'updated_at', '-created_at', '-updated_at'],
+                description: 'Sort order (prefix with - for descending)'
+              },
+              page: {
+                type: 'number',
+                description: 'Page number for pagination (default: 1)'
+              },
+              per_page: {
+                type: 'number',
+                description: 'Items per page (default: 25, max: 100)'
+              },
+              nested: {
+                type: 'boolean',
+                description: 'Include nested invoice items (default: false)'
+              }
+            }
+          }
         }
       ],
     }));
@@ -249,6 +303,30 @@ class FreeAgentServer {
             const timeslip = await this.client.stopTimer(id);
             return {
               content: [{ type: 'text', text: JSON.stringify(timeslip, null, 2) }]
+            };
+          }
+
+          case 'list_invoices': {
+            const params = { ...request.params.arguments };
+
+            // Transform YYYY-MM-DD to ISO 8601 format
+            if (params.updated_since && typeof params.updated_since === 'string') {
+              if (params.updated_since.length === 10 && !params.updated_since.includes('T')) {
+                params.updated_since = `${params.updated_since}T00:00:00.000Z`;
+              }
+            }
+
+            // Transform nested to nested_invoice_items
+            if (params.nested === true) {
+              params.nested_invoice_items = true;
+              delete params.nested;
+            } else {
+              delete params.nested;
+            }
+
+            const invoices = await this.client.listInvoices(params);
+            return {
+              content: [{ type: 'text', text: JSON.stringify(invoices, null, 2) }]
             };
           }
 
