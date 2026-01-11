@@ -261,8 +261,12 @@ export class FreeAgentClient {
         nested_invoice_items?: boolean;
     }): Promise<Invoice[]> {
         try {
+            console.error('[DEBUG] listInvoices method called with endpoint: /invoices');
             console.error('[API] Fetching invoices with params:', params);
             const response = await this.axiosInstance.get<InvoicesResponse>('/invoices', { params });
+            console.error('[DEBUG] Response data keys:', Object.keys(response.data));
+            console.error('[DEBUG] Response data type check - has invoices?', 'invoices' in response.data);
+            console.error('[DEBUG] Response data type check - has credit_notes?', 'credit_notes' in response.data);
 
             if (response.headers['x-total-count']) {
                 console.error('[API] Total invoices:', response.headers['x-total-count']);

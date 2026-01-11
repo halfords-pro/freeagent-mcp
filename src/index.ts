@@ -788,6 +788,7 @@ class FreeAgentServer {
           }
 
           case 'list_invoices': {
+            console.error('[DEBUG] list_invoices handler called');
             const params = { ...request.params.arguments };
 
             // Transform YYYY-MM-DD to ISO 8601 format
@@ -805,7 +806,10 @@ class FreeAgentServer {
               delete params.nested;
             }
 
+            console.error('[DEBUG] Calling this.client.listInvoices with params:', params);
             const invoices = await this.client.listInvoices(params);
+            console.error('[DEBUG] Received data, count:', invoices?.length || 0);
+            console.error('[DEBUG] First item keys (if any):', invoices[0] ? Object.keys(invoices[0]).slice(0, 10) : 'no items');
             return {
               content: [{ type: 'text', text: JSON.stringify(invoices, null, 2) }]
             };
