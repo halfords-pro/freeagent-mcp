@@ -181,3 +181,55 @@ export interface InvoicesResponse {
 export interface InvoiceResponse {
     invoice: Invoice;
 }
+
+// Contact Types
+export interface Contact {
+    // Core identifiers
+    url: string;
+    created_at: string;
+    updated_at: string;
+
+    // Personal/Organization info
+    first_name?: string;
+    last_name?: string;
+    organisation_name?: string;
+    email?: string;
+    billing_email?: string;
+    phone_number?: string;
+    mobile?: string;
+
+    // Address fields
+    address1?: string;
+    address2?: string;
+    address3?: string;
+    town?: string;
+    region?: string;
+    postcode?: string;
+    country?: string;
+
+    // Financial & Invoice settings
+    account_balance?: string;
+    default_payment_terms_in_days?: number;
+    charge_sales_tax?: 'Auto' | 'Always' | 'Never';
+    sales_tax_registration_number?: string;
+    contact_name_on_invoices?: boolean;
+    uses_contact_invoice_sequence?: boolean;
+    locale?: string;
+
+    // Project & Status
+    active_projects_count?: number;
+    status?: 'Active' | 'Hidden';
+
+    // CIS (Construction Industry Scheme)
+    is_cis_subcontractor?: boolean;
+    cis_deduction_rate?: string;
+    unique_tax_reference?: string;
+    subcontractor_verification_number?: string;
+
+    // Direct Debit
+    direct_debit_mandate_state?: 'setup' | 'pending' | 'inactive' | 'active' | 'failed';
+}
+
+export interface ContactResponse {
+    contact: Contact;
+}
