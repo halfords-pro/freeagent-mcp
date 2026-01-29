@@ -8,7 +8,7 @@ import {
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
 import { FreeAgentClient } from './freeagent-client.js';
-import { TimeslipAttributes, CreditNoteAttributes, EmailCreditNoteParams } from './types.js';
+import { TimeslipAttributes, CreditNoteAttributes, EmailCreditNoteParams, Contact } from './types.js';
 
 const CLIENT_ID = process.env.FREEAGENT_CLIENT_ID as string;
 const CLIENT_SECRET = process.env.FREEAGENT_CLIENT_SECRET as string;
@@ -623,6 +623,20 @@ class FreeAgentServer {
           }
         },
         {
+          name: 'get_contact',
+          description: 'Get a single contact by ID',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              id: {
+                type: 'string',
+                description: 'Contact ID (e.g., "123" from the contact URL)'
+              }
+            },
+            required: ['id']
+          }
+        },
+        {
           name: 'list_credit_notes',
           description: 'List credit notes with optional filtering, sorting, and pagination. Returns up to 25 items by default (max 100 per page).',
           inputSchema: {
@@ -864,6 +878,14 @@ class FreeAgentServer {
             const status = await this.client.checkConnection();
             return {
               content: [{ type: 'text', text: JSON.stringify(status, null, 2) }]
+            };
+          }
+
+          case 'get_contact': {
+            const { id } = request.params.arguments as { id: string };
+            const contact = await this.client.getContact(id);
+            return {
+              content: [{ type: 'text', text: JSON.stringify(contact, null, 2) }]
             };
           }
 
