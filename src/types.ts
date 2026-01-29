@@ -92,3 +92,12 @@ export interface CreditNoteResponse {
 export interface CreditNotesResponse {
     credit_notes: CreditNote[];
 }
+
+export interface EmailCreditNoteParams {
+    to: string;
+    from: string;
+    subject: string;
+    body: string;
+    email_to_sender?: boolean;
+    use_template?: boolean;
+}

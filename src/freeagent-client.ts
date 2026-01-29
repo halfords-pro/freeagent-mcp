@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { FreeAgentConfig, Timeslip, TimeslipAttributes, TimeslipsResponse, TimeslipResponse, CreditNote, CreditNoteAttributes, CreditNoteResponse, CreditNotesResponse } from './types.js';
+import { FreeAgentConfig, Timeslip, TimeslipAttributes, TimeslipsResponse, TimeslipResponse, CreditNote, CreditNoteAttributes, CreditNoteResponse, CreditNotesResponse, EmailCreditNoteParams } from './types.js';
 
 // TODO: BEFORE COMMITTING - Change api.sandbox.freeagent.com back to api.freeagent.com (production)
 export class FreeAgentClient {
@@ -194,6 +194,25 @@ export class FreeAgentClient {
             return response.data.credit_note;
         } catch (error) {
             console.error('[API] Failed to mark credit note as sent:', error);
+            throw error;
+        }
+    }
+
+    async emailCreditNote(id: string, emailParams: EmailCreditNoteParams): Promise<void> {
+        try {
+            console.error('[API] Emailing credit note:', id);
+            const payload = {
+                credit_note: {
+                    email: emailParams
+                }
+            };
+            await this.axiosInstance.post(
+                `/credit_notes/${id}/send_email`,
+                payload
+            );
+            console.error('[API] Credit note emailed successfully');
+        } catch (error) {
+            console.error('[API] Failed to email credit note:', error);
             throw error;
         }
     }

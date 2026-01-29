@@ -8,7 +8,7 @@ import {
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
 import { FreeAgentClient } from './freeagent-client.js';
-import { TimeslipAttributes, CreditNoteAttributes } from './types.js';
+import { TimeslipAttributes, CreditNoteAttributes, EmailCreditNoteParams } from './types.js';
 
 const CLIENT_ID = process.env.FREEAGENT_CLIENT_ID as string;
 const CLIENT_SECRET = process.env.FREEAGENT_CLIENT_SECRET as string;
@@ -17,6 +17,32 @@ const REFRESH_TOKEN = process.env.FREEAGENT_REFRESH_TOKEN as string;
 
 if (!CLIENT_ID || !CLIENT_SECRET || !ACCESS_TOKEN || !REFRESH_TOKEN) {
   throw new Error('Missing required environment variables for FreeAgent authentication');
+}
+
+/**
+ * Validates email address format according to RFC 5322.
+ * Accepts both formats:
+ * - addr-spec: name@domain.com, name.name@domain.com
+ * - name-addr/mailbox: "Display Name" <name@domain.com>, Display Name <name@domain.com>
+ */
+function isValidEmail(email: string): boolean {
+  const trimmed = email.trim();
+
+  // Check for name-addr format: "Name" <email@domain.com> or Name <email@domain.com>
+  const nameAddrMatch = trimmed.match(/^(?:"?([^"]*)"?\s*)?<(.+)>$/);
+
+  let emailToValidate: string;
+  if (nameAddrMatch) {
+    // name-addr format - extract email from angle brackets
+    emailToValidate = nameAddrMatch[2].trim();
+  } else {
+    // addr-spec format - use as is
+    emailToValidate = trimmed;
+  }
+
+  // Validate the email address (addr-spec)
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return emailRegex.test(emailToValidate);
 }
 
 function extractIdFromUrl(url: string | undefined, resourceType: string): string | undefined {
@@ -549,6 +575,44 @@ class FreeAgentServer {
           }
         },
         {
+          name: 'email_credit_note',
+          description: 'Email a credit note to a contact',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              id: {
+                type: 'string',
+                description: 'Credit note ID (e.g., "123" from the credit note URL)'
+              },
+              to: {
+                type: 'string',
+                description: 'Recipient email address in RFC 5322 format (e.g., "customer@example.com" or "John Doe <john.doe@example.com>")'
+              },
+              from: {
+                type: 'string',
+                description: 'Sender email address in RFC 5322 format (must belong to a registered user). Examples: "sender@example.com" or "John Doe <john.doe@example.com>"'
+              },
+              subject: {
+                type: 'string',
+                description: 'Email subject line'
+              },
+              body: {
+                type: 'string',
+                description: 'Email message content'
+              },
+              email_to_sender: {
+                type: 'boolean',
+                description: 'Whether to send a copy to the sender (defaults to true)'
+              },
+              use_template: {
+                type: 'boolean',
+                description: 'Whether to use an email template'
+              }
+            },
+            required: ['id', 'to', 'from', 'subject', 'body']
+          }
+        },
+        {
           name: 'list_credit_notes',
           description: 'List credit notes with optional filtering, sorting, and pagination. Returns up to 25 items by default (max 100 per page).',
           inputSchema: {
@@ -688,6 +752,47 @@ class FreeAgentServer {
             const creditNote = await this.client.markCreditNoteAsSent(id);
             return {
               content: [{ type: 'text', text: JSON.stringify(creditNote, null, 2) }]
+            };
+          }
+
+          case 'email_credit_note': {
+            const args = request.params.arguments as {
+              id: string;
+              to: string;
+              from: string;
+              subject: string;
+              body: string;
+              email_to_sender?: boolean;
+              use_template?: boolean;
+            };
+
+            // Validate email addresses
+            if (!isValidEmail(args.to)) {
+              throw new Error(`Invalid recipient email address: ${args.to}`);
+            }
+            if (!isValidEmail(args.from)) {
+              throw new Error(`Invalid sender email address: ${args.from}`);
+            }
+
+            const emailParams: EmailCreditNoteParams = {
+              to: args.to,
+              from: args.from,
+              subject: args.subject,
+              body: args.body,
+              ...(args.email_to_sender !== undefined && { email_to_sender: args.email_to_sender }),
+              ...(args.use_template !== undefined && { use_template: args.use_template })
+            };
+
+            await this.client.emailCreditNote(args.id, emailParams);
+
+            return {
+              content: [{
+                type: 'text',
+                text: JSON.stringify({
+                  success: true,
+                  message: `Credit note ${args.id} sent successfully to ${args.to}`
+                }, null, 2)
+              }]
             };
           }
 
