@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { FreeAgentConfig, Timeslip, TimeslipAttributes, TimeslipsResponse, TimeslipResponse, CreditNote, CreditNoteAttributes, CreditNoteResponse, CreditNotesResponse, EmailCreditNoteParams, Invoice, InvoicesResponse, Contact, ContactResponse } from './types.js';
+import { FreeAgentConfig, Timeslip, TimeslipAttributes, TimeslipsResponse, TimeslipResponse, CreditNote, CreditNoteAttributes, CreditNoteResponse, CreditNotesResponse, EmailCreditNoteParams, Invoice, InvoicesResponse, InvoiceResponse, Contact, ContactResponse } from './types.js';
 
 // TODO: BEFORE COMMITTING - Change api.sandbox.freeagent.com back to api.freeagent.com (production)
 export class FreeAgentClient {
@@ -297,6 +297,17 @@ export class FreeAgentClient {
             return response.data.invoices;
         } catch (error) {
             console.error('[API] Failed to fetch invoices:', error);
+            throw error;
+        }
+    }
+
+    async getInvoice(id: string): Promise<Invoice> {
+        try {
+            console.error('[API] Fetching invoice:', id);
+            const response = await this.axiosInstance.get<InvoiceResponse>(`/invoices/${id}`);
+            return response.data.invoice;
+        } catch (error) {
+            console.error('[API] Failed to fetch invoice:', error);
             throw error;
         }
     }

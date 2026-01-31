@@ -630,7 +630,21 @@ class FreeAgentServer {
             properties: {
               id: {
                 type: 'string',
-                description: 'Contact ID (e.g., "123" from the contact URL)'
+                description: 'Contact ID (e.g., "123" from the contact URL - https://api.freeagent.com/v2/invoices/[INVOICE ID])'
+              }
+            },
+            required: ['id']
+          }
+        },
+        {
+          name: 'get_invoice',
+          description: 'Get a single invoice by ID',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              id: {
+                type: 'string',
+                description: 'Invoice ID (e.g., "123" from the invoice URL)'
               }
             },
             required: ['id']
@@ -886,6 +900,14 @@ class FreeAgentServer {
             const contact = await this.client.getContact(id);
             return {
               content: [{ type: 'text', text: JSON.stringify(contact, null, 2) }]
+            };
+          }
+
+          case 'get_invoice': {
+            const { id } = request.params.arguments as { id: string };
+            const invoice = await this.client.getInvoice(id);
+            return {
+              content: [{ type: 'text', text: JSON.stringify(invoice, null, 2) }]
             };
           }
 
