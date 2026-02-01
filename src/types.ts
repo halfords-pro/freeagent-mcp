@@ -233,3 +233,63 @@ export interface Contact {
 export interface ContactResponse {
     contact: Contact;
 }
+
+// Bank Account Types
+export interface BankAccount {
+    // Core identifiers
+    url: string;
+    type: 'StandardBankAccount' | 'PaypalAccount' | 'CreditCardAccount';
+    name: string;
+    currency: string;  // ISO 4217 code (e.g., GBP, USD, EUR)
+
+    // Balance fields
+    opening_balance: string;  // Decimal
+    current_balance: string;  // Decimal
+
+    // Account properties
+    is_personal: boolean;
+    status: 'active' | 'hidden';
+
+    // Timestamps
+    created_at: string;
+    updated_at: string;
+
+    // Optional fields
+    bank_guess_enabled?: boolean;
+    bank_code?: string;  // e.g., "generic", "barclays"
+    latest_activity_date?: string;  // YYYY-MM-DD
+}
+
+export interface BankAccountsResponse {
+    bank_accounts: BankAccount[];
+}
+
+// Bank Transaction Explanation Types
+export interface BankTransactionExplanationAttributes {
+    bank_account: string;              // Required - Bank account URI
+    dated_on: string;                  // Required - YYYY-MM-DD
+    gross_value: string;               // Required - Decimal value
+    description?: string;              // Optional
+    paid_invoice?: string;             // Credit note URI (for Credit Note Refund)
+}
+
+export interface BankTransactionExplanation {
+    url: string;
+    bank_transaction?: string;
+    bank_account: string;
+    dated_on: string;
+    description?: string;
+    category?: string;
+    gross_value: string;
+    sales_tax_status?: string;
+    sales_tax_rate?: string;
+    sales_tax_value?: string;
+    is_deletable: boolean;
+    updated_at: string;
+    ec_status?: string;
+    paid_invoice?: string;
+}
+
+export interface BankTransactionExplanationResponse {
+    bank_transaction_explanation: BankTransactionExplanation;
+}

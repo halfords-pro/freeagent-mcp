@@ -326,6 +326,75 @@ function validateCreditNoteAttributes(data: unknown): CreditNoteAttributes {
   return validatedCreditNote;
 }
 
+function validateBankTransactionExplanationParams(data: unknown): {
+    credit_note_id: string;
+    bank_account_id: string;
+    dated_on: string;
+    gross_value: string;
+    description?: string;
+} {
+    if (typeof data !== 'object' || !data) {
+        throw new Error('Invalid bank transaction explanation data: must be an object');
+    }
+
+    const params = data as Record<string, unknown>;
+
+    // Validate required fields for Credit Note Refund type
+    if (typeof params.credit_note_id !== 'string' || params.credit_note_id.trim() === '') {
+        throw new Error('Invalid data: credit_note_id must be a non-empty string (required for credit note refund explanations)');
+    }
+
+    // Validate credit_note_id is a positive integer
+    const creditNoteIdNum = parseInt(params.credit_note_id, 10);
+    if (isNaN(creditNoteIdNum) || creditNoteIdNum <= 0 || params.credit_note_id !== creditNoteIdNum.toString()) {
+        throw new Error('Invalid data: credit_note_id must be a positive integer');
+    }
+
+    if (typeof params.bank_account_id !== 'string' || params.bank_account_id.trim() === '') {
+        throw new Error('Invalid data: bank_account_id must be a non-empty string (ID or URI)');
+    }
+
+    if (typeof params.dated_on !== 'string') {
+        throw new Error('Invalid data: dated_on must be a string');
+    }
+
+    // Validate dated_on format (YYYY-MM-DD)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(params.dated_on)) {
+        throw new Error('Invalid data: dated_on must be in YYYY-MM-DD format');
+    }
+
+    // Validate it's a valid date
+    const dateObj = new Date(params.dated_on);
+    if (isNaN(dateObj.getTime())) {
+        throw new Error('Invalid data: dated_on must be a valid date');
+    }
+
+    if (typeof params.gross_value !== 'string' && typeof params.gross_value !== 'number') {
+        throw new Error('Invalid data: gross_value must be a string or number');
+    }
+
+    // Validate gross_value is a valid decimal
+    const grossValueStr = params.gross_value.toString();
+    const grossValueNum = parseFloat(grossValueStr);
+    if (isNaN(grossValueNum)) {
+        throw new Error('Invalid data: gross_value must be a valid decimal number');
+    }
+
+    // Validate optional description
+    if (params.description !== undefined && typeof params.description !== 'string') {
+        throw new Error('Invalid data: description must be a string');
+    }
+
+    return {
+        credit_note_id: params.credit_note_id,
+        bank_account_id: params.bank_account_id,
+        dated_on: params.dated_on,
+        gross_value: grossValueStr,
+        description: params.description as string | undefined
+    };
+}
+
 class FreeAgentServer {
   private server: Server;
   private client: FreeAgentClient;
@@ -651,6 +720,36 @@ class FreeAgentServer {
           }
         },
         {
+          name: 'create_bank_transaction_explanation',
+          description: 'Create a bank transaction explanation. NOTE: Current implementation ONLY supports Credit Note Refunds. Other transaction types (invoice payments, bill payments, etc.) are not yet supported.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              credit_note_id: {
+                type: 'string',
+                description: 'Credit note ID (e.g., "699571", "1000029818" - must be a positive integer). Required for credit note refund explanations.'
+              },
+              bank_account_id: {
+                type: 'string',
+                description: 'Bank account ID or URI (e.g., "123" or "https://api.freeagent.com/v2/bank_accounts/123")'
+              },
+              dated_on: {
+                type: 'string',
+                description: 'Transaction date in YYYY-MM-DD format'
+              },
+              gross_value: {
+                type: 'string',
+                description: 'Transaction amount as decimal (e.g., "100.50" for refund, negative values supported)'
+              },
+              description: {
+                type: 'string',
+                description: 'Optional description of the transaction'
+              }
+            },
+            required: ['credit_note_id', 'bank_account_id', 'dated_on', 'gross_value']
+          }
+        },
+        {
           name: 'list_credit_notes',
           description: 'List credit notes with optional filtering, sorting, and pagination. Returns up to 25 items by default (max 100 per page).',
           inputSchema: {
@@ -743,6 +842,20 @@ class FreeAgentServer {
               nested: {
                 type: 'boolean',
                 description: 'Include nested invoice items (default: false)'
+              }
+            }
+          }
+        },
+        {
+          name: 'list_bank_accounts',
+          description: 'List bank accounts with optional filtering by account type',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              view: {
+                type: 'string',
+                enum: ['standard_bank_accounts', 'credit_card_accounts', 'paypal_accounts'],
+                description: 'Filter by account type'
               }
             }
           }
@@ -911,6 +1024,33 @@ class FreeAgentServer {
             };
           }
 
+          case 'create_bank_transaction_explanation': {
+            const params = validateBankTransactionExplanationParams(request.params.arguments);
+
+            const explanation = await this.client.createBankTransactionExplanation(
+              params.credit_note_id,
+              params.bank_account_id,
+              {
+                dated_on: params.dated_on,
+                gross_value: params.gross_value,
+                description: params.description
+              }
+            );
+
+            // Extract ID from URL for easier reference
+            const explanation_id = extractIdFromUrl(explanation.url, 'bank_transaction_explanation');
+
+            // Return enhanced response
+            const enhancedResponse = {
+              ...explanation,
+              bank_transaction_explanation_id: explanation_id
+            };
+
+            return {
+              content: [{ type: 'text', text: JSON.stringify(enhancedResponse, null, 2) }]
+            };
+          }
+
           case 'list_credit_notes': {
             // Transform updated_since from YYYY-MM-DD to ISO 8601 if needed
             const params = { ...request.params.arguments };
@@ -961,6 +1101,13 @@ class FreeAgentServer {
             console.error('[DEBUG] First item keys (if any):', invoices[0] ? Object.keys(invoices[0]).slice(0, 10) : 'no items');
             return {
               content: [{ type: 'text', text: JSON.stringify(invoices, null, 2) }]
+            };
+          }
+
+          case 'list_bank_accounts': {
+            const bankAccounts = await this.client.listBankAccounts(request.params.arguments);
+            return {
+              content: [{ type: 'text', text: JSON.stringify(bankAccounts, null, 2) }]
             };
           }
 

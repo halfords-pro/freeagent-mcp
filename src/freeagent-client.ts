@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { FreeAgentConfig, Timeslip, TimeslipAttributes, TimeslipsResponse, TimeslipResponse, CreditNote, CreditNoteAttributes, CreditNoteResponse, CreditNotesResponse, EmailCreditNoteParams, Invoice, InvoicesResponse, InvoiceResponse, Contact, ContactResponse } from './types.js';
+import { FreeAgentConfig, Timeslip, TimeslipAttributes, TimeslipsResponse, TimeslipResponse, CreditNote, CreditNoteAttributes, CreditNoteResponse, CreditNotesResponse, EmailCreditNoteParams, Invoice, InvoicesResponse, InvoiceResponse, Contact, ContactResponse, BankTransactionExplanation, BankTransactionExplanationAttributes, BankTransactionExplanationResponse, BankAccount, BankAccountsResponse } from './types.js';
 
 // TODO: BEFORE COMMITTING - Change api.sandbox.freeagent.com back to api.freeagent.com (production)
 export class FreeAgentClient {
@@ -319,6 +319,84 @@ export class FreeAgentClient {
             return response.data.contact;
         } catch (error) {
             console.error('[API] Failed to fetch contact:', error);
+            throw error;
+        }
+    }
+
+    async listBankAccounts(params?: {
+        view?: 'standard_bank_accounts' | 'credit_card_accounts' | 'paypal_accounts';
+    }): Promise<BankAccount[]> {
+        try {
+            console.error('[API] Fetching bank accounts with params:', params);
+            const response = await this.axiosInstance.get<BankAccountsResponse>('/bank_accounts', { params });
+            return response.data.bank_accounts;
+        } catch (error) {
+            console.error('[API] Failed to fetch bank accounts:', error);
+            throw error;
+        }
+    }
+
+    private constructCreditNoteUri(creditNoteId: string): string {
+        return `${this.apiUrl}/credit_notes/${creditNoteId}`;
+    }
+
+    private constructBankAccountUri(bankAccountId: string): string {
+        // Handle both ID and full URI
+        if (bankAccountId.startsWith('http')) {
+            return bankAccountId;
+        }
+        return `${this.apiUrl}/bank_accounts/${bankAccountId}`;
+    }
+
+    async createBankTransactionExplanation(
+        creditNoteId: string,
+        bankAccountId: string,
+        attributes: {
+            dated_on: string;
+            gross_value: string;
+            description?: string;
+        }
+    ): Promise<BankTransactionExplanation> {
+        try {
+            console.error('[API] Creating bank transaction explanation (Credit Note Refund) for credit note:', creditNoteId);
+
+            const payload = {
+                bank_transaction_explanation: {
+                    bank_account: this.constructBankAccountUri(bankAccountId),
+                    dated_on: attributes.dated_on,
+                    gross_value: attributes.gross_value,
+                    paid_invoice: this.constructCreditNoteUri(creditNoteId),
+                    ...(attributes.description && { description: attributes.description })
+                }
+            };
+
+            console.error('[API] Payload:', payload);
+
+            const response = await this.axiosInstance.post<BankTransactionExplanationResponse>(
+                '/bank_transaction_explanations',
+                payload
+            );
+
+            return response.data.bank_transaction_explanation;
+        } catch (error) {
+            console.error('[API] Failed to create bank transaction explanation:', error);
+
+            // Enhanced error handling similar to createCreditNote
+            if (axios.isAxiosError(error)) {
+                const statusCode = error.response?.status;
+                const apiError = error.response?.data;
+
+                if (statusCode === 400) {
+                    throw new Error(`Invalid bank transaction explanation data: ${JSON.stringify(apiError)}`);
+                } else if (statusCode === 401) {
+                    throw new Error('Authentication failed. Please check your API credentials.');
+                } else if (statusCode === 422) {
+                    throw new Error(`Validation failed: ${JSON.stringify(apiError)}`);
+                } else if (statusCode) {
+                    throw new Error(`FreeAgent API error (${statusCode}): ${JSON.stringify(apiError)}`);
+                }
+            }
+
             throw error;
         }
     }
