@@ -1,8 +1,10 @@
 {
-  "name": "freeagent-mcp",
+  "name": "@halfords-pro/freeagent-mcp",
   "version": "0.1.0",
   "description": "An MCP server to interact with FreeAgent",
-  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "bin": {
     "freeagent-mcp": "./build/index.js"
